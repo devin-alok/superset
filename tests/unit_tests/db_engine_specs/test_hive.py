@@ -223,6 +223,49 @@ def test_df_to_sql_escapes_like_wildcards(mocker: MockerFixture) -> None:
     assert "ESCAPE" in sql
 
 
+def test_df_to_sql_replace_quotes_table_identifier(mocker: MockerFixture) -> None:
+    """
+    Test that ``df_to_sql`` with ``if_exists="replace"`` quotes the table name
+    with the dialect's identifier quoting (backticks) instead of the
+    percent-encoded ``Table.__str__`` form.
+    """
+    import pandas as pd
+    from sqlalchemy.dialects.mysql import dialect as mysql_dialect
+
+    from superset.db_engine_specs.hive import HiveEngineSpec
+    from superset.sql.parse import Table
+
+    database = mocker.MagicMock()
+    engine = mocker.MagicMock()
+    engine.dialect = mysql_dialect()
+    conn = engine.begin.return_value.__enter__.return_value
+    mocker.patch.object(
+        HiveEngineSpec, "get_engine"
+    ).return_value.__enter__.return_value = engine
+    mocker.patch("superset.db_engine_specs.hive.upload_to_s3", return_value="s3://x")
+    mocker.patch("superset.db_engine_specs.hive.pq.write_table")
+    mocker.patch("superset.db_engine_specs.hive.g")
+    mocker.patch(
+        "superset.db_engine_specs.hive.app",
+        config={
+            "UPLOAD_FOLDER": "/tmp",  # noqa: S108
+            "CSV_TO_HIVE_UPLOAD_DIRECTORY_FUNC": lambda *args: "prefix",
+        },
+    )
+
+    HiveEngineSpec.df_to_sql(
+        database=database,
+        table=Table("weird table", "my schema"),
+        df=pd.DataFrame({"a": [1]}),
+        to_sql_kwargs={"if_exists": "replace"},
+    )
+
+    statements = [str(call.args[0]) for call in conn.execute.call_args_list]
+    assert statements[0] == "DROP TABLE IF EXISTS `my schema`.`weird table`"
+    assert "CREATE TABLE `my schema`.`weird table` (" in statements[1]
+    assert "%20" not in "".join(statements)
+
+
 def test_partition_query_escapes_identifiers() -> None:
     """
     Test that ``_partition_query`` correctly backtick-quotes table and schema names
