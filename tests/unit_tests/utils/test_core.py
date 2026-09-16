@@ -32,6 +32,7 @@ from superset.utils.core import (
     cast_to_boolean,
     check_is_safe_zip,
     DateColumn,
+    error_msg_from_exception,
     extract_dataframe_dtypes,
     FilterOperator,
     generic_find_constraint_name,
@@ -2104,3 +2105,24 @@ def test_extract_dataframe_dtypes_with_duplicate_columns() -> None:
     df = pd.DataFrame([[1, 2, 3]], columns=["a", "b", "a"])
     result = extract_dataframe_dtypes(df)
     assert len(result) == 3
+
+
+class _MessageError(Exception):
+    def __init__(self, message: Any) -> None:
+        super().__init__("fallback text")
+        self.message = message
+
+
+@pytest.mark.parametrize(
+    ("ex", "expected"),
+    [
+        (_MessageError({"errorCode": 42}), "fallback text"),
+        (_MessageError({"message": None}), "fallback text"),
+        (_MessageError({"message": "dict message"}), "dict message"),
+        (_MessageError("plain message"), "plain message"),
+        (_MessageError(""), "fallback text"),
+        (ValueError("plain exception"), "plain exception"),
+    ],
+)
+def test_error_msg_from_exception(ex: Exception, expected: str) -> None:
+    assert error_msg_from_exception(ex) == expected
