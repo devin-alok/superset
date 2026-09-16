@@ -1704,12 +1704,16 @@ def split(
     parens = 0
     quotes = False
     i = 0
-    for j, character in enumerate(string):
+    j = 0
+    while j < len(string):
+        character = string[j]
         complete = parens == 0 and not quotes
-        if complete and character == delimiter:
+        if complete and string.startswith(delimiter, j):
             yield string[i:j]
             i = j + len(delimiter)
-        elif character == "(":
+            j = i
+            continue
+        if character == "(":
             parens += 1
         elif character == ")":
             parens -= 1
@@ -1718,6 +1722,7 @@ def split(
                 quotes = False
             elif not quotes:
                 quotes = True
+        j += 1
     yield string[i:]
 
 
