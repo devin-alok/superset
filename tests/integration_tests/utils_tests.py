@@ -286,13 +286,17 @@ class TestUtils(SupersetTestCase):
         assert recipients_string_to_list(" a@a ") == ["a@a"]
         assert recipients_string_to_list("a@a\n") == ["a@a"]
         assert recipients_string_to_list(",a@a;") == ["a@a"]
-        assert recipients_string_to_list(",a@a; b@b c@c a-c@c; d@d, f@f") == [
+        assert recipients_string_to_list(",a@a; b@b, c@c, a-c@c; d@d, f@f") == [
             "a@a",
             "b@b",
             "c@c",
             "a-c@c",
             "d@d",
             "f@f",
+        ]
+        assert recipients_string_to_list("Team <t@a>, t@a; T@A") == [
+            "Team <t@a>",
+            "t@a",
         ]
 
     def test_get_form_data_default(self) -> None:
