@@ -1300,7 +1300,7 @@ def merge_request_params(form_data: dict[str, Any], params: dict[str, Any]) -> N
     :param form_data: object to be updated
     :param params: request parameters received via query string
     """
-    url_params = form_data.get("url_params", {})
+    url_params = form_data.get("url_params") or {}
     for key, value in params.items():
         if key in ("form_data", "r"):
             continue

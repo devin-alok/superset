@@ -1900,6 +1900,22 @@ def test_merge_request_params_when_url_params_predefined():
     assert url_params["dashboard_ids"] == form_data["url_params"]["dashboard_ids"]
 
 
+def test_merge_request_params_when_url_params_is_none():
+    form_data = {"since": "2000", "until": "now", "url_params": None}
+    url_params = {"form_data": form_data, "dashboard_ids": "(1,2,3,4,5)"}
+    merge_request_params(form_data, url_params)
+    assert form_data["url_params"] == {"dashboard_ids": "(1,2,3,4,5)"}
+
+
+def test_merge_request_params_skips_form_data_and_r_keys():
+    form_data = {"since": "2000", "until": "now"}
+    url_params = {"form_data": form_data, "r": "abc", "dashboard_ids": "(1,2)"}
+    merge_request_params(form_data, url_params)
+    assert form_data["url_params"] == {"dashboard_ids": "(1,2)"}
+    assert "form_data" not in form_data
+    assert "r" not in form_data
+
+
 def test_parse_js_uri_path_items_eval_undefined():
     assert parse_js_uri_path_item("undefined", eval_undefined=True) is None
     assert parse_js_uri_path_item("null", eval_undefined=True) is None
