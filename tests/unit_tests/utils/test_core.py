@@ -55,6 +55,8 @@ from superset.utils.core import (
     sanitize_cookie_token,
     sanitize_svg_content,
     sanitize_url,
+    zlib_compress,
+    zlib_decompress,
 )
 from tests.conftest import with_config
 
@@ -2104,3 +2106,18 @@ def test_extract_dataframe_dtypes_with_duplicate_columns() -> None:
     df = pd.DataFrame([[1, 2, 3]], columns=["a", "b", "a"])
     result = extract_dataframe_dtypes(df)
     assert len(result) == 3
+
+
+def test_zlib_decompress_decode_returns_str() -> None:
+    blob = zlib_compress('{"test": 1}')
+    result = zlib_decompress(blob)
+    assert isinstance(result, str)
+    assert result == '{"test": 1}'
+    assert zlib_decompress(blob, decode=True) == '{"test": 1}'
+
+
+def test_zlib_decompress_no_decode_returns_bytes() -> None:
+    blob = zlib_compress(b'{"test": 1}')
+    result = zlib_decompress(blob, decode=False)
+    assert isinstance(result, bytes)
+    assert result == b'{"test": 1}'

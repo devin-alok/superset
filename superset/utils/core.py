@@ -53,8 +53,10 @@ from typing import (
     Any,
     Callable,
     cast,
+    Literal,
     NamedTuple,
     Optional,
+    overload,
     TYPE_CHECKING,
     TypedDict,
     TypeVar,
@@ -1061,7 +1063,19 @@ def zlib_compress(data: bytes | str) -> bytes:
     return zlib.compress(data)
 
 
-def zlib_decompress(blob: bytes, decode: bool | None = True) -> bytes | str:
+@overload
+def zlib_decompress(blob: bytes | str, decode: Literal[True] = ...) -> str: ...
+
+
+@overload
+def zlib_decompress(blob: bytes | str, decode: Literal[False]) -> bytes: ...
+
+
+@overload
+def zlib_decompress(blob: bytes | str, decode: bool) -> bytes | str: ...
+
+
+def zlib_decompress(blob: bytes | str, decode: bool = True) -> bytes | str:
     """
     Decompress things to a string in a py2/3 safe fashion
     >>> json_str = '{"test": 1}'
