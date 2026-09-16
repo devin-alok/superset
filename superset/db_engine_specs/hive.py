@@ -246,7 +246,8 @@ class HiveEngineSpec(PrestoEngineSpec):
                 schema=table.schema,
             ) as engine:
                 with engine.begin() as conn:
-                    conn.execute(text(f"DROP TABLE IF EXISTS {str(table)}"))
+                    quoted_table = cls.quote_table(table, engine.dialect)
+                    conn.execute(text(f"DROP TABLE IF EXISTS {quoted_table}"))
 
         def _get_hive_type(dtype: np.dtype[Any]) -> str:
             hive_type_by_dtype = {
@@ -273,10 +274,11 @@ class HiveEngineSpec(PrestoEngineSpec):
                 schema=table.schema,
             ) as engine:
                 with engine.begin() as conn:
+                    quoted_table = cls.quote_table(table, engine.dialect)
                     conn.execute(
                         text(
                             f"""
-                            CREATE TABLE {str(table)} ({schema_definition})
+                            CREATE TABLE {quoted_table} ({schema_definition})
                             STORED AS PARQUET
                             LOCATION :location
                             """
