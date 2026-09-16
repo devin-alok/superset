@@ -60,7 +60,7 @@ from typing import (
     TypeVar,
 )
 from urllib.parse import unquote_plus, urlparse
-from zipfile import ZipFile
+from zipfile import ZIP_DEFLATED, ZipFile
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import markdown as md
@@ -2222,7 +2222,7 @@ def apply_max_row_limit(
 
 def create_zip(files: dict[str, Any]) -> BytesIO:
     buf = BytesIO()
-    with ZipFile(buf, "w") as bundle:
+    with ZipFile(buf, "w", compression=ZIP_DEFLATED) as bundle:
         for filename, contents in files.items():
             with bundle.open(filename, "w") as fp:
                 fp.write(contents)
