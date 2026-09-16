@@ -1987,6 +1987,24 @@ def test_sanitize_url_blocks_dangerous():
     assert sanitize_url("data:text/html,<script>alert(1)</script>") == ""
 
 
+@pytest.mark.parametrize(
+    "url",
+    ["//cdn.evil.com/x", "/\\evil.com", "  //evil.com"],
+)
+def test_sanitize_url_blocks_protocol_relative(url: str) -> None:
+    """Test that protocol-relative URLs are blocked."""
+    assert sanitize_url(url) == ""
+
+
+@pytest.mark.parametrize(
+    "url",
+    ["/static/logo.png", "static/logo.png", "https://cdn.ok.com/x.gif"],
+)
+def test_sanitize_url_allows_safe_urls(url: str) -> None:
+    """Test that path-relative and http(s) URLs pass through unchanged."""
+    assert sanitize_url(url) == url
+
+
 def test_markdown_basic() -> None:
     result = markdown("**bold**")
 
