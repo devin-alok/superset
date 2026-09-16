@@ -131,14 +131,20 @@ class _PlaywrightBrowserManager:
         if self._browser is not None:
             try:
                 self._browser.close()
-            except Exception:  # noqa: S110
-                pass
+            except Exception:  # pylint: disable=broad-except
+                logger.warning(
+                    "Failed to close Playwright browser; process may be orphaned",
+                    exc_info=True,
+                )
             self._browser = None
         if self._playwright is not None:
             try:
                 self._playwright.stop()
-            except Exception:  # noqa: S110
-                pass
+            except Exception:  # pylint: disable=broad-except
+                logger.warning(
+                    "Failed to stop Playwright; process may be orphaned",
+                    exc_info=True,
+                )
             self._playwright = None
 
 
