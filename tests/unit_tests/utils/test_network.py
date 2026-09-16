@@ -15,11 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 import ipaddress
+import subprocess
 from unittest.mock import patch
 
 import pytest
 
-from superset.utils.network import is_safe_host, is_safe_ip
+from superset.utils.network import is_host_up, is_safe_host, is_safe_ip
 
 
 @pytest.mark.parametrize(
@@ -164,3 +165,31 @@ def test_is_safe_host_rejects_cgnat_range() -> None:
         return_value=[(None, None, None, None, ("100.100.100.200", 0))],
     ):
         assert is_safe_host("cgnat-host") is False
+
+
+@pytest.mark.parametrize(
+    ("return_code", "expected"),
+    [(0, True), (1, False)],
+)
+def test_is_host_up_return_code(return_code: int, expected: bool) -> None:
+    """`is_host_up` returns True only when ping exits with 0."""
+    with patch(
+        "superset.utils.network.subprocess.call", return_value=return_code
+    ) as mock_call:
+        assert is_host_up("example.com") is expected
+    kwargs = mock_call.call_args.kwargs
+    assert kwargs["stdout"] is subprocess.DEVNULL
+    assert kwargs["stderr"] is subprocess.DEVNULL
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        FileNotFoundError("ping: command not found"),
+        subprocess.TimeoutExpired(cmd="ping", timeout=5),
+    ],
+)
+def test_is_host_up_errors_return_false(error: Exception) -> None:
+    """A missing ping binary or a timeout must return False, not raise."""
+    with patch("superset.utils.network.subprocess.call", side_effect=error):
+        assert is_host_up("example.com") is False
