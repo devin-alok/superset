@@ -15,11 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 import ipaddress
+import socket
 from unittest.mock import patch
 
 import pytest
 
-from superset.utils.network import is_safe_host, is_safe_ip
+from superset.utils.network import is_port_open, is_safe_host, is_safe_ip
 
 
 @pytest.mark.parametrize(
@@ -99,8 +100,6 @@ def test_is_safe_host_ip_classification(resolved_ip: str, expected: bool) -> Non
 
 def test_is_safe_host_unresolvable_returns_false() -> None:
     """Unresolvable hostnames must return False (fail-closed)."""
-    import socket
-
     with patch(
         "superset.utils.network.socket.getaddrinfo",
         side_effect=socket.gaierror("Name or service not known"),
@@ -164,3 +163,12 @@ def test_is_safe_host_rejects_cgnat_range() -> None:
         return_value=[(None, None, None, None, ("100.100.100.200", 0))],
     ):
         assert is_safe_host("cgnat-host") is False
+
+
+def test_is_port_open_unresolvable_returns_false() -> None:
+    """An unresolvable hostname must return False instead of raising."""
+    with patch(
+        "superset.utils.network.socket.getaddrinfo",
+        side_effect=socket.gaierror("Name or service not known"),
+    ):
+        assert is_port_open("no-such-host.invalid", 5432) is False
