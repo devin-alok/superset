@@ -17,14 +17,18 @@
 # pylint: disable=import-outside-toplevel, unused-argument, unused-import, invalid-name
 
 import copy
+import gc
+import gzip
 import io
 import re
 import uuid
+import warnings
 from datetime import datetime
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 from urllib import request
 
+import pandas as pd
 import pytest
 import yaml
 from flask import current_app
@@ -2778,7 +2782,8 @@ def test_load_data_bounds_gzip_download_before_decompression(
     )
 
     bounded_raw = io.BytesIO(b"")
-    decompressed = Mock()
+    decompressed = MagicMock()
+    decompressed.__enter__.return_value = decompressed
     mock_read_bounded = mocker.patch(
         "superset.commands.dataset.importers.v1.utils._read_bounded",
         side_effect=[bounded_raw, io.BytesIO(b"")],
@@ -2804,3 +2809,59 @@ def test_load_data_bounds_gzip_download_before_decompression(
     mock_gzip_open.assert_called_once_with(bounded_raw)
     # ...and the decompressed output is bounded again before parsing.
     assert mock_read_bounded.call_args_list[1].args[0] is decompressed
+
+
+def test_load_data_closes_gzip_handle(mocker: MockerFixture) -> None:
+    """
+    ``load_data`` must release the ``GzipFile`` it opens for a ``.gz`` data
+    URI deterministically instead of leaving it to garbage collection.
+    """
+    from superset.commands.dataset.importers.v1.utils import load_data
+
+    mocker.patch("superset.commands.dataset.importers.v1.utils.validate_data_uri")
+    mocker.patch(
+        "superset.examples.helpers.normalize_example_data_url",
+        side_effect=lambda uri: uri,
+    )
+    mocker.patch(
+        "superset.commands.dataset.importers.v1.utils._convert_temporal_columns"
+    )
+    mocker.patch("superset.commands.dataset.importers.v1.utils.db.session.connection")
+    mock_to_sql = mocker.patch.object(pd.DataFrame, "to_sql", autospec=True)
+    opened: list[gzip.GzipFile] = []
+    real_gzip_open = gzip.open
+
+    def spy_gzip_open(*args: Any, **kwargs: Any) -> gzip.GzipFile:
+        handle = real_gzip_open(*args, **kwargs)
+        opened.append(handle)
+        return handle
+
+    mocker.patch(
+        "superset.commands.dataset.importers.v1.utils.gzip.open",
+        side_effect=spy_gzip_open,
+    )
+
+    mock_opener = Mock()
+    mock_opener.open.return_value = io.BytesIO(gzip.compress(b"a,b\n1,2\n"))
+    mocker.patch(
+        "superset.commands.dataset.importers.v1.utils.request.build_opener",
+        return_value=mock_opener,
+    )
+
+    dataset = Mock(spec=SqlaTable)
+    dataset.columns = []
+    dataset.table_name = "my_table"
+    dataset.schema = None
+
+    database = Mock(spec=Database)
+    database.sqlalchemy_uri = current_app.config["SQLALCHEMY_DATABASE_URI"]
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", ResourceWarning)
+        load_data("https://example.org/data.csv.gz", dataset, database)
+        gc.collect()
+
+    assert len(opened) == 1
+    assert opened[0].closed
+    df = mock_to_sql.call_args.args[0]
+    assert list(df.columns) == ["a", "b"]
