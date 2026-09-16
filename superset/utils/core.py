@@ -676,6 +676,10 @@ def sanitize_url(url: str) -> str:
 
     url = url.strip()
 
+    # Protocol-relative URLs (//host or /\host) resolve to a different origin
+    if url.startswith(("//", "/\\")):
+        return ""
+
     # Relative URLs are safe
     if url.startswith("/"):
         return url
