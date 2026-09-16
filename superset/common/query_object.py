@@ -262,19 +262,17 @@ class QueryObject:  # pylint: disable=too-many-instance-attributes
         operator's to manage, so both are passed through untouched.
         """
         operation = post_proc.get("operation")
-        function = (
-            getattr(pandas_postprocessing, operation, None)
-            if isinstance(operation, str) and operation in pandas_postprocessing.__all__
-            else None
-        )
-        if function is None:
+        if (
+            not isinstance(operation, str)
+            or operation not in pandas_postprocessing.__all__
+        ):
             # A missing, unknown or operator-registered operation is left
             # untouched, so that exec_post_processing either dispatches it or
             # reports it as InvalidPostProcessingError.
             return post_proc
-
-        # ``function`` is only resolved when ``operation`` is a known builtin name.
-        assert isinstance(operation, str)
+        function = getattr(pandas_postprocessing, operation, None)
+        if function is None:
+            return post_proc
 
         parameters = inspect.signature(function).parameters
         if any(

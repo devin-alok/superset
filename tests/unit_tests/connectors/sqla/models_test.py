@@ -2023,3 +2023,33 @@ def test_get_fetch_values_predicate_wraps_undefined_error(
 
     with pytest.raises(QueryObjectValidationError):
         sqla_table.get_fetch_values_predicate(template_processor=mock_processor)
+
+
+@pytest.mark.parametrize(
+    "series_limit_metric",
+    [
+        {"label": "no expressionType"},
+        ["not", "a", "metric"],
+        42,
+        None,
+    ],
+)
+def test_get_series_orderby_rejects_malformed_series_limit_metric(
+    series_limit_metric: object,
+) -> None:
+    """
+    A malformed ``series_limit_metric`` from the query payload must surface as a
+    ``QueryObjectValidationError`` rather than an ``AssertionError``.
+    """
+    sqla_table = SqlaTable(
+        table_name="my_sqla_table",
+        columns=[],
+        metrics=[],
+        database=Database(database_name="my_db", sqlalchemy_uri="sqlite://"),
+    )
+    with pytest.raises(QueryObjectValidationError):
+        sqla_table._get_series_orderby(
+            series_limit_metric,  # type: ignore[arg-type]
+            metrics_by_name={},
+            columns_by_name={},
+        )
