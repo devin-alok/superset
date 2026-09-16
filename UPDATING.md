@@ -24,6 +24,17 @@ assists people when migrating to a new version.
 
 ## Next
 
+- `SupersetMetastoreCache` now defaults to `JsonKeyValueCodec` when a cache
+  config (`FILTER_STATE_CACHE_CONFIG`, `EXPLORE_FORM_DATA_CACHE_CONFIG`,
+  `EXTENSIONS_EPHEMERAL_STORAGE`, or any custom `CACHE_TYPE:
+  "SupersetMetastoreCache"` config) omits the `CODEC` key. Previously the default
+  was `PickleKeyValueCodec`, whose `pickle.loads` on read turns any tampered
+  `key_value` row into arbitrary code execution. Deployments that rely on
+  caching non-JSON-serializable values must opt in explicitly by setting
+  `"CODEC": PickleKeyValueCodec()`; a warning naming the config key is logged at
+  startup when pickle is in use. Existing pickle-encoded cache entries are not
+  readable with the JSON codec and will need to be evicted or re-created.
+
 - `superset deletion-retention force-purge` now exits **1** when the target is
   blocked by a deletion rule or is not found (the messages are unchanged), so a
   scripted compliance erasure cannot mistake a refusal for a completed purge.
