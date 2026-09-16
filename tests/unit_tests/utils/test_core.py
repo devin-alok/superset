@@ -55,6 +55,7 @@ from superset.utils.core import (
     sanitize_cookie_token,
     sanitize_svg_content,
     sanitize_url,
+    to_int,
 )
 from tests.conftest import with_config
 
@@ -2097,6 +2098,31 @@ def test_sanitize_cookie_token_accepts_valid(token: str) -> None:
 )
 def test_sanitize_cookie_token_rejects_invalid(token: Optional[str]) -> None:
     assert sanitize_cookie_token(token) is None
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (42, 42),
+        (-7, -7),
+        (0, 0),
+        (42.0, 42),
+        ("42", 42),
+        ("42.0", 42),
+        (" 42 ", 42),
+    ],
+)
+def test_to_int_valid(value: Any, expected: int) -> None:
+    assert to_int(value) == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    [3.99, "3.99", True, False, None, "abc", "", float("nan"), float("inf"), [1]],
+)
+def test_to_int_invalid(value: Any) -> None:
+    assert to_int(value) == 0
+    assert to_int(value, value_if_invalid=-1) == -1
 
 
 def test_extract_dataframe_dtypes_with_duplicate_columns() -> None:

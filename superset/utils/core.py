@@ -2311,10 +2311,19 @@ def remove_extra_adhoc_filters(form_data: dict[str, Any]) -> None:
 
 
 def to_int(v: Any, value_if_invalid: int = 0) -> int:
-    try:
-        return int(v)
-    except (ValueError, TypeError):
+    """
+    Coerce a value to an integer, returning ``value_if_invalid`` for anything
+    that is not an integral number (booleans, non-integral floats, garbage).
+    """
+    if isinstance(v, bool):
         return value_if_invalid
+    try:
+        f = float(v)
+    except (ValueError, TypeError, OverflowError):
+        return value_if_invalid
+    if not f.is_integer():
+        return value_if_invalid
+    return int(f)
 
 
 def get_query_source_from_request() -> QuerySource | None:
