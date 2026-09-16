@@ -55,6 +55,7 @@ from superset.utils.core import (
     sanitize_cookie_token,
     sanitize_svg_content,
     sanitize_url,
+    user_label,
 )
 from tests.conftest import with_config
 
@@ -2104,3 +2105,25 @@ def test_extract_dataframe_dtypes_with_duplicate_columns() -> None:
     df = pd.DataFrame([[1, 2, 3]], columns=["a", "b", "a"])
     result = extract_dataframe_dtypes(df)
     assert len(result) == 3
+
+
+@pytest.mark.parametrize(
+    "first_name, last_name, expected",
+    [
+        ("Ada", "Lovelace", "Ada Lovelace"),
+        ("Ada", "", "Ada"),
+        ("", "Lovelace", "Lovelace"),
+        (None, "Lovelace", "Lovelace"),
+        ("", "", "ada"),
+        (None, None, "ada"),
+    ],
+)
+def test_user_label(
+    first_name: Optional[str], last_name: Optional[str], expected: str
+) -> None:
+    user = MagicMock(first_name=first_name, last_name=last_name, username="ada")
+    assert user_label(user) == expected
+
+
+def test_user_label_none_user() -> None:
+    assert user_label(None) is None
