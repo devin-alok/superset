@@ -30,6 +30,7 @@ from superset.exceptions import SupersetException
 from superset.utils.core import (
     build_email_attachment,
     cast_to_boolean,
+    cast_to_num,
     check_is_safe_zip,
     DateColumn,
     extract_dataframe_dtypes,
@@ -245,6 +246,30 @@ def test_other_values():
     assert cast_to_boolean([]) is False
     assert cast_to_boolean({}) is False
     assert cast_to_boolean(object()) is False
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("5", 5),
+        ("-5", -5),
+        (" 7 ", 7),
+        ("5.2", 5.2),
+        ("-5.2", -5.2),
+        (10, 10),
+        (10.1, 10.1),
+        (None, None),
+        ("\u00b2", None),
+        ("\u00b3", None),
+        ("\u2461", None),
+        ("not a number", None),
+        ("", None),
+    ],
+)
+def test_cast_to_num(value: Any, expected: Any) -> None:
+    result = cast_to_num(value)
+    assert result == expected
+    assert type(result) is type(expected)
 
 
 def test_normalize_dttm_col() -> None:

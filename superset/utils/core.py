@@ -474,11 +474,13 @@ def cast_to_num(value: float | int | str | None) -> float | int | None:
     """Casts a value to an int/float
 
     >>> cast_to_num('1 ')
-    1.0
+    1
     >>> cast_to_num(' 2')
-    2.0
+    2
     >>> cast_to_num('5')
     5
+    >>> cast_to_num('-5')
+    -5
     >>> cast_to_num('5.2')
     5.2
     >>> cast_to_num(10)
@@ -489,17 +491,21 @@ def cast_to_num(value: float | int | str | None) -> float | int | None:
     True
     >>> cast_to_num('this is not a string') is None
     True
+    >>> cast_to_num('\u00b2') is None
+    True
 
     :param value: value to be converted to numeric representation
-    :returns: value cast to `int` if value is all digits, `float` if `value` is
-              decimal value and `None`` if it can't be converted
+    :returns: value cast to `int` if value is an integer literal, `float` if
+              `value` is a decimal value and `None` if it can't be converted
     """
     if value is None:
         return None
     if isinstance(value, (int, float)):
         return value
-    if value.isdigit():
+    try:
         return int(value)
+    except ValueError:
+        pass
     try:
         return float(value)
     except ValueError:
