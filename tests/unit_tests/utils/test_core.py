@@ -34,6 +34,7 @@ from superset.utils.core import (
     DateColumn,
     extract_dataframe_dtypes,
     FilterOperator,
+    format_list,
     generic_find_constraint_name,
     generic_find_fk_constraint_name,
     generic_find_uq_constraint_name,
@@ -2104,3 +2105,18 @@ def test_extract_dataframe_dtypes_with_duplicate_columns() -> None:
     df = pd.DataFrame([[1, 2, 3]], columns=["a", "b", "a"])
     result = extract_dataframe_dtypes(df)
     assert len(result) == 3
+
+
+@pytest.mark.parametrize(
+    "items, kwargs, expected",
+    [
+        (["a", "b"], {}, '"a", "b"'),
+        (['b"c'], {}, '"b\\"c"'),
+        (["a\\"], {}, '"a\\\\"'),
+        (["a\\", 'b"c'], {}, '"a\\\\", "b\\"c"'),
+        ([], {}, ""),
+        (["a", "b'c"], {"sep": "|", "quote": "'"}, "'a'|'b\\'c'"),
+    ],
+)
+def test_format_list(items: list[str], kwargs: dict[str, str], expected: str) -> None:
+    assert format_list(items, **kwargs) == expected

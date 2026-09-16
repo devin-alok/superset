@@ -1983,8 +1983,10 @@ def get_time_filter_status(
 
 
 def format_list(items: Sequence[str], sep: str = ", ", quote: str = '"') -> str:
-    quote_escaped = "\\" + quote
-    return sep.join(f"{quote}{x.replace(quote, quote_escaped)}{quote}" for x in items)
+    def esc(x: str) -> str:
+        return x.replace("\\", "\\\\").replace(quote, "\\" + quote)
+
+    return sep.join(f"{quote}{esc(x)}{quote}" for x in items)
 
 
 def find_duplicates(items: Iterable[InputType]) -> list[InputType]:
