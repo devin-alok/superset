@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 import os
+import zipfile
 from dataclasses import dataclass
 from typing import Any, Optional
 from unittest.mock import MagicMock, patch
@@ -31,6 +32,7 @@ from superset.utils.core import (
     build_email_attachment,
     cast_to_boolean,
     check_is_safe_zip,
+    create_zip,
     DateColumn,
     extract_dataframe_dtypes,
     FilterOperator,
@@ -2097,6 +2099,16 @@ def test_sanitize_cookie_token_accepts_valid(token: str) -> None:
 )
 def test_sanitize_cookie_token_rejects_invalid(token: Optional[str]) -> None:
     assert sanitize_cookie_token(token) is None
+
+
+def test_create_zip_uses_deflate_compression() -> None:
+    files = {"a.yaml": b"x" * 1000, "b.yaml": b"y" * 500}
+    with zipfile.ZipFile(create_zip(files)) as bundle:
+        assert {info.filename for info in bundle.infolist()} == set(files)
+        for info in bundle.infolist():
+            assert info.compress_type == zipfile.ZIP_DEFLATED
+            assert info.compress_size < info.file_size
+            assert bundle.read(info.filename) == files[info.filename]
 
 
 def test_extract_dataframe_dtypes_with_duplicate_columns() -> None:
