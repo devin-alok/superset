@@ -734,8 +734,11 @@ def load_data(data_uri: str, dataset: SqlaTable, database: Database) -> None:
     # the limit even when the decompressed CSV stays within it.
     max_bytes = app.config["ZIPPED_FILE_MAX_SIZE"]
     if data_uri.endswith(".gz"):
-        data = gzip.open(_read_bounded(data, max_bytes))
-    df = pd.read_csv(_read_bounded(data, max_bytes), encoding="utf-8")
+        with gzip.open(_read_bounded(data, max_bytes)) as gz:
+            data = _read_bounded(gz, max_bytes)
+    else:
+        data = _read_bounded(data, max_bytes)
+    df = pd.read_csv(data, encoding="utf-8")
     dtype = get_dtype(df, dataset)
 
     _convert_temporal_columns(df, dtype)
