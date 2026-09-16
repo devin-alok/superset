@@ -16,6 +16,7 @@
 # under the License.
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Optional
 from unittest.mock import MagicMock, patch
 
@@ -51,6 +52,7 @@ from superset.utils.core import (
     parse_js_uri_path_item,
     QueryObjectFilterClause,
     QuerySource,
+    readfile,
     recipients_string_to_list,
     remove_extra_adhoc_filters,
     sanitize_cookie_token,
@@ -2140,6 +2142,13 @@ def test_sanitize_cookie_token_accepts_valid(token: str) -> None:
 )
 def test_sanitize_cookie_token_rejects_invalid(token: Optional[str]) -> None:
     assert sanitize_cookie_token(token) is None
+
+
+def test_readfile_reads_utf8(tmp_path: Path) -> None:
+    """readfile should decode UTF-8 content regardless of the locale default."""
+    file_path = tmp_path / "utf8.md"
+    file_path.write_text("Wörld Bank ✓", encoding="utf-8")
+    assert readfile(str(file_path)) == "Wörld Bank ✓"
 
 
 def test_extract_dataframe_dtypes_with_duplicate_columns() -> None:
