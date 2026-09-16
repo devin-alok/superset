@@ -91,8 +91,11 @@ def is_port_open(host: str, port: int) -> bool:
     Test if a given port in a host is open.
     """
     # pylint: disable=invalid-name
-    for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
-        af, _, _, _, sockaddr = res
+    try:
+        addresses = socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM)
+    except socket.gaierror:
+        return False
+    for af, _, _, _, sockaddr in addresses:
         s = socket.socket(af, socket.SOCK_STREAM)
         try:
             s.settimeout(PORT_TIMEOUT)
