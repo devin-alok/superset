@@ -558,7 +558,7 @@ def error_msg_from_exception(ex: Exception) -> str:
             msg = ex.message.get("message")  # type: ignore
         elif ex.message:
             msg = ex.message
-    return str(msg) or str(ex)
+    return str(msg) if msg else str(ex)
 
 
 def markdown(raw: str, markup_wrap: bool | None = False) -> str:
