@@ -93,6 +93,7 @@ from superset.superset_typing import (
 )
 from superset.utils import core as utils, json
 from superset.utils.core import ColumnSpec, GenericDataType, QuerySource
+from superset.utils.dates import naive_utcnow
 from superset.utils.hashing import hash_from_str
 from superset.utils.json import redact_sensitive, reveal_sensitive
 from superset.utils.network import is_hostname_valid, is_port_open
@@ -829,7 +830,7 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
             value={"code_verifier": code_verifier},
             codec=JsonKeyValueCodec(),
             key=UUID(tab_id),
-            expires_on=datetime.now() + timedelta(minutes=5),
+            expires_on=naive_utcnow() + timedelta(minutes=5),
         )
         # We need to commit here because we're going to raise an exception, which will
         # revert any non-commited changes.

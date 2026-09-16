@@ -31,6 +31,7 @@ from superset.key_value.types import (
     PickleKeyValueCodec,
 )
 from superset.key_value.utils import get_uuid_namespace
+from superset.utils.dates import naive_utcnow
 from superset.utils.decorators import transaction
 
 RESOURCE = KeyValueResource.METASTORE_CACHE
@@ -75,7 +76,7 @@ class SupersetMetastoreCache(BaseCache):
     def _get_expiry(self, timeout: Optional[int]) -> Optional[datetime]:
         timeout = self._normalize_timeout(timeout)
         if timeout is not None and timeout > 0:
-            return datetime.now() + timedelta(seconds=timeout)
+            return naive_utcnow() + timedelta(seconds=timeout)
         return None
 
     def set(self, key: str, value: Any, timeout: Optional[int] = None) -> bool:
