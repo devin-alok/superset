@@ -51,6 +51,7 @@ from superset.utils.core import (
     parse_js_uri_path_item,
     QueryObjectFilterClause,
     QuerySource,
+    recipients_string_to_list,
     remove_extra_adhoc_filters,
     sanitize_cookie_token,
     sanitize_svg_content,
@@ -164,6 +165,34 @@ def test_remove_extra_adhoc_filters(
 ) -> None:
     remove_extra_adhoc_filters(original)
     assert expected == original
+
+
+@pytest.mark.parametrize(
+    "address_string, expected",
+    [
+        (None, []),
+        ("", []),
+        ("  , ; ", []),
+        ("a@a", ["a@a"]),
+        (" a@a ", ["a@a"]),
+        ("a@a\n", ["a@a"]),
+        (",a@a;", ["a@a"]),
+        ("a@a,b@b", ["a@a", "b@b"]),
+        ("a@a;b@b", ["a@a", "b@b"]),
+        ("a@a, b@b; c@c", ["a@a", "b@b", "c@c"]),
+        ("Data Team <data@example.com>", ["Data Team <data@example.com>"]),
+        (
+            "Data Team <data@example.com>, Ops <ops@example.com>",
+            ["Data Team <data@example.com>", "Ops <ops@example.com>"],
+        ),
+        ("a@x.com, a@x.com", ["a@x.com"]),
+        ("a@x.com, A@X.COM; b@x.com, a@x.com", ["a@x.com", "b@x.com"]),
+    ],
+)
+def test_recipients_string_to_list(
+    address_string: Optional[str], expected: list[str]
+) -> None:
+    assert recipients_string_to_list(address_string) == expected
 
 
 def test_is_test():
