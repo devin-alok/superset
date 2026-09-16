@@ -232,6 +232,22 @@ def test_string_values():
     assert cast_to_boolean("") is False
 
 
+@pytest.mark.parametrize(
+    "value",
+    ["1", "t", "T", "yes", "YES", "y", "on", "On ", " True ", "\ttrue\n"],
+)
+def test_truthy_string_values(value: str):
+    assert cast_to_boolean(value) is True
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["0", "f", "false", "no", "NO", "n", "off", "OFF ", "", "  ", "maybe", "2"],
+)
+def test_falsy_string_values(value: str):
+    assert cast_to_boolean(value) is False
+
+
 def test_none_value():
     assert cast_to_boolean(None) is None
 

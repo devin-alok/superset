@@ -521,11 +521,19 @@ def cast_to_boolean(value: Any) -> bool | None:
     False
     >>> cast_to_boolean('False')
     False
+    >>> cast_to_boolean('1')
+    True
+    >>> cast_to_boolean(' yes ')
+    True
+    >>> cast_to_boolean('off')
+    False
     >>> cast_to_boolean(None)
 
     :param value: value to be converted to boolean representation
-    :returns: value cast to `bool`. when value is 'true' or value that are not 0
-              converted into True. Return `None` if value is `None`
+    :returns: value cast to `bool`. Truthy strings ("1", "true", "t", "yes",
+              "y", "on"; case-insensitive, stripped) and non-zero numbers are
+              converted into True; any other string is False.
+              Return `None` if value is `None`
     """
     if value is None:
         return None
@@ -534,7 +542,7 @@ def cast_to_boolean(value: Any) -> bool | None:
     if isinstance(value, (int, float)):
         return value != 0
     if isinstance(value, str):
-        return value.strip().lower() == "true"
+        return value.strip().lower() in {"1", "true", "t", "yes", "y", "on"}
     return False
 
 
