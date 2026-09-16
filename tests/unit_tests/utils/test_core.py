@@ -1987,6 +1987,20 @@ def test_sanitize_url_blocks_dangerous():
     assert sanitize_url("data:text/html,<script>alert(1)</script>") == ""
 
 
+def test_sanitize_url_blocks_protocol_relative():
+    """Test that protocol-relative URLs are blocked."""
+    assert sanitize_url("//cdn.evil.com/x") == ""
+    assert sanitize_url("/\\evil.com") == ""
+    assert sanitize_url("  //evil.com") == ""
+
+
+def test_sanitize_url_allows_safe_paths():
+    """Test that single-slash and bare relative paths are unchanged."""
+    assert sanitize_url("/static/logo.png") == "/static/logo.png"
+    assert sanitize_url("static/logo.png") == "static/logo.png"
+    assert sanitize_url("https://cdn.ok.com/x.gif") == "https://cdn.ok.com/x.gif"
+
+
 def test_markdown_basic() -> None:
     result = markdown("**bold**")
 
