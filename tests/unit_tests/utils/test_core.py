@@ -16,6 +16,7 @@
 # under the License.
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Optional
 from unittest.mock import MagicMock, patch
 
@@ -32,6 +33,7 @@ from superset.utils.core import (
     cast_to_boolean,
     check_is_safe_zip,
     DateColumn,
+    ensure_path_exists,
     extract_dataframe_dtypes,
     FilterOperator,
     generic_find_constraint_name,
@@ -2104,3 +2106,17 @@ def test_extract_dataframe_dtypes_with_duplicate_columns() -> None:
     df = pd.DataFrame([[1, 2, 3]], columns=["a", "b", "a"])
     result = extract_dataframe_dtypes(df)
     assert len(result) == 3
+
+
+def test_ensure_path_exists_is_idempotent(tmp_path: Path) -> None:
+    path = tmp_path / "nested" / "dir"
+    ensure_path_exists(str(path))
+    ensure_path_exists(str(path))
+    assert path.is_dir()
+
+
+def test_ensure_path_exists_raises_when_path_is_file(tmp_path: Path) -> None:
+    file_path = tmp_path / "file"
+    file_path.write_text("")
+    with pytest.raises(FileExistsError):
+        ensure_path_exists(str(file_path))
