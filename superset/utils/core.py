@@ -676,7 +676,7 @@ def sanitize_url(url: str) -> str:
 
     url = url.strip()
 
-    # Protocol-relative URLs (//host or /\host) resolve to a different origin
+    # Protocol-relative URLs (//host or /\host) resolve to a foreign host
     if url.startswith(("//", "/\\")):
         return ""
 
@@ -1040,13 +1040,21 @@ def recipients_string_to_list(address_string: str | None) -> list[str]:
     """
     Returns the list of target recipients for alerts and reports.
 
-    Strips values and converts a comma/semicolon separated
-    string into a list.
+    Splits a comma/semicolon separated string into a list, stripping
+    surrounding whitespace and removing duplicates (case-insensitively)
+    while preserving order. Addresses with display names, such as
+    ``"Data Team <data@example.com>"``, are kept intact.
     """
-    address_string_list: list[str] = []
-    if isinstance(address_string, str):
-        address_string_list = re.split(r",|\s|;", address_string)
-    return [x.strip() for x in address_string_list if x.strip()]
+    if not isinstance(address_string, str):
+        return []
+    seen: set[str] = set()
+    result: list[str] = []
+    for raw in re.split(r"[,;]", address_string):
+        addr = raw.strip()
+        if addr and addr.lower() not in seen:
+            seen.add(addr.lower())
+            result.append(addr)
+    return result
 
 
 def choicify(values: Iterable[Any]) -> list[tuple[Any, Any]]:
