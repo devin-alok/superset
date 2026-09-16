@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import _thread
 import collections
-import errno
 import logging
 import os
 import platform
@@ -1454,11 +1453,7 @@ def get_first_metric_name(
 
 
 def ensure_path_exists(path: str) -> None:
-    try:
-        os.makedirs(path)
-    except OSError as ex:
-        if not (os.path.isdir(path) and ex.errno == errno.EEXIST):
-            raise
+    os.makedirs(path, exist_ok=True)
 
 
 def convert_legacy_filters_into_adhoc(  # pylint: disable=invalid-name
