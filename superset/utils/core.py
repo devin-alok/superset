@@ -676,6 +676,10 @@ def sanitize_url(url: str) -> str:
 
     url = url.strip()
 
+    # Protocol-relative URLs (//host or /\host) resolve to a foreign host
+    if url.startswith(("//", "/\\")):
+        return ""
+
     # Relative URLs are safe
     if url.startswith("/"):
         return url
@@ -1036,9 +1040,10 @@ def recipients_string_to_list(address_string: str | None) -> list[str]:
     """
     Returns the list of target recipients for alerts and reports.
 
-    Strips values and converts a comma/semicolon separated string into a
-    list, keeping display-name addresses (``Name <addr>``) intact and
-    dropping case-insensitive duplicates while preserving order.
+    Splits a comma/semicolon separated string into a list, stripping
+    surrounding whitespace and removing duplicates (case-insensitively)
+    while preserving order. Addresses with display names, such as
+    ``"Data Team <data@example.com>"``, are kept intact.
     """
     if not isinstance(address_string, str):
         return []
