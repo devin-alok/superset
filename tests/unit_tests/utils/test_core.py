@@ -2104,3 +2104,44 @@ def test_extract_dataframe_dtypes_with_duplicate_columns() -> None:
     df = pd.DataFrame([[1, 2, 3]], columns=["a", "b", "a"])
     result = extract_dataframe_dtypes(df)
     assert len(result) == 3
+
+
+def test_create_ssl_cert_file_is_atomic(
+    tmp_path: Any, mocker: MockerFixture, app_context: None
+) -> None:
+    """
+    The certificate must never be observable at its final path until the
+    contents have been fully written.
+    """
+    from superset.utils import core
+
+    certificate = "-----BEGIN CERTIFICATE-----\nabc\n-----END CERTIFICATE-----\n"
+    mocker.patch.object(core, "parse_ssl_cert")
+    mocker.patch.dict(current_app.config, {"SSL_CERT_PATH": str(tmp_path)})
+
+    expected_path = os.path.join(
+        str(tmp_path), f"{core.hash_from_str(certificate)}.crt"
+    )
+    observations: list[bool] = []
+    original_fdopen = os.fdopen
+
+    def slow_fdopen(fd: int, *args: Any, **kwargs: Any) -> Any:
+        # Simulate a slow writer: the final path must not exist while the
+        # certificate is being written to the temporary file
+        observations.append(os.path.exists(expected_path))
+        return original_fdopen(fd, *args, **kwargs)
+
+    mocker.patch.object(core.os, "fdopen", side_effect=slow_fdopen)
+
+    path = core.create_ssl_cert_file(certificate)
+
+    assert path == expected_path
+    assert observations == [False]
+    with open(path) as cert_file:
+        assert cert_file.read() == certificate
+    assert os.listdir(str(tmp_path)) == [os.path.basename(expected_path)]
+
+    # Subsequent calls reuse the existing file without rewriting it
+    observations.clear()
+    assert core.create_ssl_cert_file(certificate) == expected_path
+    assert observations == []
