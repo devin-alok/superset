@@ -79,3 +79,19 @@ def test_branch_escaped_quote():
         r'"a\"b c"',
         "d",
     ]
+
+
+def test_split_multi_character_delimiter():
+    assert list(split("a, b, c", delimiter=", ")) == ["a", "b", "c"]
+
+
+def test_split_multi_character_delimiter_with_parentheses():
+    assert list(split("a, b, (c, d)", delimiter=", ")) == ["a", "b", "(c, d)"]
+
+
+def test_split_multi_character_delimiter_with_quotes():
+    assert list(split('a, "b, c", d', delimiter=", ")) == ["a", '"b, c"', "d"]
+
+
+def test_split_multi_character_delimiter_partial_match():
+    assert list(split("a,b, c", delimiter=", ")) == ["a,b", "c"]
