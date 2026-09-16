@@ -882,3 +882,19 @@ def test_cache_key_ignores_bounds_when_time_range_is_set():
     query_object2 = QueryObject(time_range="Last week", from_dttm=datetime(1970, 1, 1))
 
     assert query_object1.cache_key() == query_object2.cache_key()
+
+
+@pytest.mark.parametrize("operation", [None, 42, ("resample",)])
+def test_drop_unsupported_options_passes_through_non_string_operation(operation):
+    """
+    A non-string ``operation`` from the payload is left untouched so that
+    ``exec_post_processing`` reports it as ``InvalidPostProcessingError``
+    instead of tripping an ``AssertionError``.
+    """
+    post_proc = {"operation": operation, "options": {"rule": "1D"}}
+
+    assert QueryObject._drop_unsupported_options(post_proc) is post_proc
+
+    query_object = QueryObject(row_limit=1, post_processing=[post_proc])
+    with pytest.raises(InvalidPostProcessingError):
+        query_object.exec_post_processing(pd.DataFrame({"y": [1.0]}))

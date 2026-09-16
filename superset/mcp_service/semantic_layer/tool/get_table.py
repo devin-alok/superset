@@ -459,14 +459,19 @@ async def get_table(
     if selection_error is not None:
         return selection_error
 
-    is_builtin = request.dataset_id is not None
-    datasource_type = "table" if is_builtin else "semantic_view"
-    if is_builtin:
-        assert request.dataset_id is not None
+    if request.dataset_id is not None:
+        is_builtin = True
+        datasource_type = "table"
         datasource_id = request.dataset_id
-    else:
-        assert request.view_id is not None
+    elif request.view_id is not None:
+        is_builtin = False
+        datasource_type = "semantic_view"
         datasource_id = request.view_id
+    else:
+        return SemanticLayerError.create(
+            error="Provide either dataset_id or view_id.",
+            error_type="ValidationError",
+        )
 
     try:
         return await _run_get_table_query(

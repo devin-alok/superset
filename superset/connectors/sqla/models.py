@@ -2191,8 +2191,9 @@ class SqlaTable(
         columns_by_name: dict[str, TableColumn],
         template_processor: BaseTemplateProcessor | None = None,
     ) -> Column:
-        if utils.is_adhoc_metric(series_limit_metric):
-            assert isinstance(series_limit_metric, dict)
+        if isinstance(series_limit_metric, dict) and utils.is_adhoc_metric(
+            series_limit_metric
+        ):
             ob = self.adhoc_metric_to_sqla(
                 series_limit_metric,
                 columns_by_name,
