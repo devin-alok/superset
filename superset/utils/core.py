@@ -696,8 +696,8 @@ def sanitize_url(url: str) -> str:
         return ""
 
 
-def readfile(file_path: str) -> str | None:
-    with open(file_path) as f:
+def readfile(file_path: str) -> str:
+    with open(file_path, encoding="utf-8") as f:
         content = f.read()
     return content
 
