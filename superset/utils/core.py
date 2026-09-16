@@ -1311,10 +1311,8 @@ def merge_request_params(form_data: dict[str, Any], params: dict[str, Any]) -> N
 def user_label(user: User) -> str | None:
     """Given a user ORM FAB object, returns a label"""
     if user:
-        if user.first_name and user.last_name:
-            return user.first_name + " " + user.last_name
-
-        return user.username
+        name = " ".join(part for part in (user.first_name, user.last_name) if part)
+        return name or user.username
 
     return None
 
