@@ -16,6 +16,7 @@
 # under the License.
 
 import io
+import logging
 from dataclasses import replace
 from unittest.mock import ANY, MagicMock, patch
 from uuid import UUID
@@ -33,6 +34,7 @@ from superset.utils.screenshot_utils import (
     ScreenshotBlankCaptureError,
 )
 from superset.utils.webdriver import (
+    _PlaywrightBrowserManager,
     check_playwright_availability,
     PLAYWRIGHT_AVAILABLE,
     PLAYWRIGHT_INSTALL_MESSAGE,
@@ -2186,3 +2188,57 @@ class TestWebDriverPlaywrightAnimationWaitOrder:
         assert timeout_values == [0], (
             f"Expected only [0] (headstart), got {timeout_values}"
         )
+
+
+class TestPlaywrightBrowserManagerCleanup:
+    """``_cleanup`` must never raise, but must log what it swallowed."""
+
+    def test_browser_close_error_is_logged_and_swallowed(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        manager = _PlaywrightBrowserManager()
+        manager._browser = MagicMock()
+        manager._browser.close.side_effect = RuntimeError("close failed")
+        manager._playwright = MagicMock()
+
+        with caplog.at_level(logging.WARNING, logger="superset.utils.webdriver"):
+            manager._cleanup()
+
+        assert manager._browser is None
+        assert manager._playwright is None
+        records = [r for r in caplog.records if r.levelno == logging.WARNING]
+        assert len(records) == 1
+        assert "Failed to close Playwright browser" in records[0].getMessage()
+        assert records[0].exc_info is not None
+        assert "close failed" in caplog.text
+
+    def test_playwright_stop_error_is_logged_and_swallowed(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        manager = _PlaywrightBrowserManager()
+        manager._browser = None
+        manager._playwright = MagicMock()
+        manager._playwright.stop.side_effect = RuntimeError("stop failed")
+
+        with caplog.at_level(logging.WARNING, logger="superset.utils.webdriver"):
+            manager._cleanup()
+
+        assert manager._playwright is None
+        records = [r for r in caplog.records if r.levelno == logging.WARNING]
+        assert len(records) == 1
+        assert "Failed to stop Playwright" in records[0].getMessage()
+        assert "stop failed" in caplog.text
+
+    def test_cleanup_is_silent_on_success(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        manager = _PlaywrightBrowserManager()
+        manager._browser = MagicMock()
+        manager._playwright = MagicMock()
+
+        with caplog.at_level(logging.WARNING, logger="superset.utils.webdriver"):
+            manager._cleanup()
+
+        assert manager._browser is None
+        assert manager._playwright is None
+        assert caplog.records == []

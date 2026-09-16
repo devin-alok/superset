@@ -59,8 +59,10 @@ def _emit_baseline_error_metric() -> None:
     metric emission must never be what breaks a user's save."""
     try:
         current_app.config["STATS_LOGGER"].incr("versioning.baseline_capture_error")
-    except Exception:  # pylint: disable=broad-except  # noqa: S110
-        pass
+    except Exception:  # pylint: disable=broad-except
+        logger.warning(
+            "Failed to emit versioning.baseline_capture_error metric", exc_info=True
+        )
 
 
 # Sentinel attribute set on the session target after first successful
