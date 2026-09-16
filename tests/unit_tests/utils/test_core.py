@@ -51,6 +51,7 @@ from superset.utils.core import (
     parse_js_uri_path_item,
     QueryObjectFilterClause,
     QuerySource,
+    recipients_string_to_list,
     remove_extra_adhoc_filters,
     sanitize_cookie_token,
     sanitize_svg_content,
@@ -164,6 +165,34 @@ def test_remove_extra_adhoc_filters(
 ) -> None:
     remove_extra_adhoc_filters(original)
     assert expected == original
+
+
+@pytest.mark.parametrize(
+    "address_string, expected",
+    [
+        (None, []),
+        ("", []),
+        ("  , ; ", []),
+        ("a@a", ["a@a"]),
+        (" a@a ", ["a@a"]),
+        ("a@a\n", ["a@a"]),
+        (",a@a;", ["a@a"]),
+        ("a@a,b@b", ["a@a", "b@b"]),
+        ("a@a;b@b", ["a@a", "b@b"]),
+        ("a@a, b@b; c@c", ["a@a", "b@b", "c@c"]),
+        ("Data Team <data@example.com>", ["Data Team <data@example.com>"]),
+        (
+            "Data Team <data@example.com>, Ops <ops@example.com>",
+            ["Data Team <data@example.com>", "Ops <ops@example.com>"],
+        ),
+        ("a@x.com, a@x.com", ["a@x.com"]),
+        ("a@x.com, A@X.COM; b@x.com, a@x.com", ["a@x.com", "b@x.com"]),
+    ],
+)
+def test_recipients_string_to_list(
+    address_string: Optional[str], expected: list[str]
+) -> None:
+    assert recipients_string_to_list(address_string) == expected
 
 
 def test_is_test():
@@ -1987,22 +2016,18 @@ def test_sanitize_url_blocks_dangerous():
     assert sanitize_url("data:text/html,<script>alert(1)</script>") == ""
 
 
-@pytest.mark.parametrize(
-    "url",
-    ["//cdn.evil.com/x", "/\\evil.com", "  //evil.com"],
-)
-def test_sanitize_url_blocks_protocol_relative(url: str) -> None:
+def test_sanitize_url_blocks_protocol_relative():
     """Test that protocol-relative URLs are blocked."""
-    assert sanitize_url(url) == ""
+    assert sanitize_url("//cdn.evil.com/x") == ""
+    assert sanitize_url("/\\evil.com") == ""
+    assert sanitize_url("  //evil.com") == ""
 
 
-@pytest.mark.parametrize(
-    "url",
-    ["/static/logo.png", "static/logo.png", "https://cdn.ok.com/x.gif"],
-)
-def test_sanitize_url_allows_safe_urls(url: str) -> None:
-    """Test that path-relative and http(s) URLs pass through unchanged."""
-    assert sanitize_url(url) == url
+def test_sanitize_url_allows_safe_paths():
+    """Test that single-slash and bare relative paths are unchanged."""
+    assert sanitize_url("/static/logo.png") == "/static/logo.png"
+    assert sanitize_url("static/logo.png") == "static/logo.png"
+    assert sanitize_url("https://cdn.ok.com/x.gif") == "https://cdn.ok.com/x.gif"
 
 
 def test_markdown_basic() -> None:
