@@ -26,14 +26,22 @@ def load_class_from_name(fq_class_name: str) -> Any:
 
     :param fq_class_name: The fully qualified name of the class to load
     :return: The class object
-    :raises Exception: if the class cannot be loaded
+    :raises ValueError: if the name is not fully qualified or the class is
+        not found in the module
+    :raises ModuleNotFoundError: if the module cannot be imported
     """
-    if not fq_class_name:
-        raise ValueError(f"Invalid class name {fq_class_name}")
+    if not fq_class_name or "." not in fq_class_name:
+        raise ValueError(
+            f"Invalid fully qualified class name {fq_class_name!r}; "
+            "expected 'package.module.ClassName'"
+        )
 
-    parts = fq_class_name.split(".")
-    module_name = ".".join(parts[:-1])
-    class_name = parts[-1]
+    module_name, class_name = fq_class_name.rsplit(".", 1)
 
     module = import_module(module_name)
-    return getattr(module, class_name)
+    try:
+        return getattr(module, class_name)
+    except AttributeError as ex:
+        raise ValueError(
+            f"Module {module_name!r} has no class named {class_name!r}"
+        ) from ex
