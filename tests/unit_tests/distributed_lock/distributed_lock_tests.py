@@ -17,6 +17,7 @@
 
 # pylint: disable=invalid-name
 
+import time
 from typing import Any
 from unittest.mock import MagicMock, patch
 from uuid import UUID
@@ -159,6 +160,45 @@ def test_distributed_lock_kv_expired() -> None:
                     assert _get_lock(MAIN_KEY, session) is None
 
             assert _get_lock(MAIN_KEY, session) is None
+
+
+@pytest.mark.parametrize("tz", ["Asia/Kolkata", "America/New_York"])
+def test_distributed_lock_kv_ttl_independent_of_host_timezone(
+    tz: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A freshly acquired KV lock survives expiry checks on a non-UTC host.
+
+    Writer and readers must agree on a single (naive UTC) clock; otherwise the
+    lock is either purged the moment it is written (host east of UTC) or
+    outlives its TTL by the UTC offset (host west of UTC). The host clock is
+    left unfrozen here on purpose: freezegun shifts ``now(timezone.utc)`` by
+    ``tz_offset`` as well, which would mask the skew.
+    """
+    from superset.daos.key_value import KeyValueDAO
+    from superset.key_value.types import KeyValueResource
+
+    monkeypatch.setenv("TZ", tz)
+    time.tzset()
+    try:
+        session = _get_other_session()
+
+        with patch(BACKEND_DEFINED, return_value=False):
+            assert _get_lock(MAIN_KEY, session) is None
+            with DistributedLock("ns", a=1, b=2, ttl_seconds=30):
+                assert _held(_get_lock(MAIN_KEY, session))
+                KeyValueDAO.delete_expired_entries(KeyValueResource.LOCK)
+                db.session.commit()
+                assert _held(_get_lock(MAIN_KEY, session))
+
+                with pytest.raises(AcquireDistributedLockFailedException):
+                    with DistributedLock("ns", a=1, b=2, ttl_seconds=30):
+                        pass
+
+            assert _get_lock(MAIN_KEY, session) is None
+    finally:
+        monkeypatch.undo()
+        time.tzset()
 
 
 def test_distributed_lock_kv_release_only_deletes_own_lock() -> None:

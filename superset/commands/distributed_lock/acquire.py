@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Any
 
 import redis
@@ -40,6 +40,7 @@ from superset.key_value.exceptions import (
     KeyValueUpsertFailedError,
 )
 from superset.key_value.types import KeyValueResource
+from superset.utils.dates import naive_utcnow
 from superset.utils.decorators import transaction
 
 logger = logging.getLogger(__name__)
@@ -133,7 +134,7 @@ class AcquireDistributedLock(BaseDistributedLockCommand):
             value={"token": self.token},
             codec=self.codec,
             key=self.key,
-            expires_on=datetime.now(timezone.utc) + timedelta(seconds=self.ttl_seconds),
+            expires_on=naive_utcnow() + timedelta(seconds=self.ttl_seconds),
         )
 
         logger.debug(

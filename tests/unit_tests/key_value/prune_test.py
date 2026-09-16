@@ -27,6 +27,7 @@ from flask.ctx import AppContext
 
 from superset.extensions import db
 from superset.key_value.types import JsonKeyValueCodec, KeyValueResource
+from superset.utils.dates import naive_utcnow
 
 if TYPE_CHECKING:
     from superset.key_value.models import KeyValueEntry
@@ -68,8 +69,8 @@ def test_prune_deletes_expired_entries(
     from superset.key_value.commands.prune import KeyValuePruneCommand
     from superset.key_value.models import KeyValueEntry
 
-    expired_a = _add_entry(datetime.now() - timedelta(days=1))
-    expired_b = _add_entry(datetime.now() - timedelta(seconds=5))
+    expired_a = _add_entry(naive_utcnow() - timedelta(days=1))
+    expired_b = _add_entry(naive_utcnow() - timedelta(seconds=5))
     expired_ids = {expired_a.id, expired_b.id}
 
     KeyValuePruneCommand().run()
@@ -85,9 +86,9 @@ def test_prune_retains_non_expired_and_no_expiry_entries(
     from superset.key_value.commands.prune import KeyValuePruneCommand
     from superset.key_value.models import KeyValueEntry
 
-    future = _add_entry(datetime.now() + timedelta(days=1))
+    future = _add_entry(naive_utcnow() + timedelta(days=1))
     no_expiry = _add_entry(None)
-    expired = _add_entry(datetime.now() - timedelta(days=1))
+    expired = _add_entry(naive_utcnow() - timedelta(days=1))
 
     KeyValuePruneCommand().run()
 
@@ -122,31 +123,29 @@ def test_prune_skips_entry_refreshed_after_selection(
     # is refreshed (expires_on moved into the future) before the delete runs.
     # The delete re-checks expiry against the cutoff captured at selection time,
     # so the refreshed entry must survive. We inject the refresh right after the
-    # command captures its cutoff by patching datetime.now used in the command.
-    expired = _add_entry(datetime.now() - timedelta(days=1))
+    # command captures its cutoff by patching naive_utcnow used in the command.
+    expired = _add_entry(naive_utcnow() - timedelta(days=1))
     db.session.commit()  # pylint: disable=consider-using-transaction
 
     import superset.key_value.commands.prune as prune_module
 
-    real_now = datetime.now
+    real_now = prune_module.naive_utcnow
     state = {"refreshed": False}
 
-    class _PatchedDatetime:
-        @staticmethod
-        def now() -> datetime:
-            # The command calls now() once to capture the cutoff. After that
-            # call, refresh the entry so the subsequent delete sees a future
-            # expires_on but still deletes against the original cutoff.
-            current = real_now()
-            if not state["refreshed"]:
-                state["refreshed"] = True
-                db.session.query(KeyValueEntry).filter(
-                    KeyValueEntry.id == expired.id
-                ).update({KeyValueEntry.expires_on: real_now() + timedelta(days=1)})
-                db.session.commit()  # pylint: disable=consider-using-transaction
-            return current
+    def _patched_now() -> datetime:
+        # The command calls naive_utcnow() once to capture the cutoff. After
+        # that call, refresh the entry so the subsequent delete sees a future
+        # expires_on but still deletes against the original cutoff.
+        current = real_now()
+        if not state["refreshed"]:
+            state["refreshed"] = True
+            db.session.query(KeyValueEntry).filter(
+                KeyValueEntry.id == expired.id
+            ).update({KeyValueEntry.expires_on: real_now() + timedelta(days=1)})
+            db.session.commit()  # pylint: disable=consider-using-transaction
+        return current
 
-    with patch.object(prune_module, "datetime", _PatchedDatetime):
+    with patch.object(prune_module, "naive_utcnow", _patched_now):
         KeyValuePruneCommand().run()
 
     remaining_ids = {row.id for row in db.session.query(KeyValueEntry.id).all()}
@@ -160,7 +159,7 @@ def test_prune_respects_max_rows_per_run(
     from superset.key_value.models import KeyValueEntry
 
     for _ in range(3):
-        _add_entry(datetime.now() - timedelta(days=1))
+        _add_entry(naive_utcnow() - timedelta(days=1))
 
     KeyValuePruneCommand(max_rows_per_run=2).run()
 

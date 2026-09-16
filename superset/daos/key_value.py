@@ -33,6 +33,7 @@ from superset.key_value.models import KeyValueEntry
 from superset.key_value.types import Key, KeyValueCodec, KeyValueResource
 from superset.key_value.utils import get_filter
 from superset.utils.core import get_user_id
+from superset.utils.dates import naive_utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,7 @@ class KeyValueDAO(BaseDAO[KeyValueEntry]):
             .filter(
                 and_(
                     KeyValueEntry.resource == resource.value,
-                    KeyValueEntry.expires_on <= datetime.now(),
+                    KeyValueEntry.expires_on <= naive_utcnow(),
                 )
             )
             .delete()
