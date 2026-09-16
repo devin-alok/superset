@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import _thread
 import collections
+import contextlib
 import errno
 import logging
 import os
@@ -1641,8 +1642,17 @@ def create_ssl_cert_file(certificate: str) -> str:
     if not os.path.exists(path):
         # Validate certificate prior to persisting to temporary directory
         parse_ssl_cert(certificate)
-        with open(path, "w") as cert_file:
-            cert_file.write(certificate)
+        # Write to a temporary file and atomically move it into place so that
+        # concurrent readers never observe a partially written certificate
+        fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname(path), suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w") as cert_file:
+                cert_file.write(certificate)
+            os.replace(tmp_path, path)
+        except BaseException:
+            with contextlib.suppress(OSError):
+                os.unlink(tmp_path)
+            raise
     return path
 
 
